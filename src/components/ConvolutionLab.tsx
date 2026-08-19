@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CATEGORIES,
+  SAMPLES,
   convolve,
   defaultScene,
   neighbourhood,
   type CategoryName,
   type Gray,
   type Kernel,
+  type SampleName,
 } from "@/lib/kernels";
+
 
 const SCALE = 4;
 
