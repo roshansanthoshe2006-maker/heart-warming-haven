@@ -147,6 +147,17 @@ export function ConvolutionLab() {
     setCursor({ x, y });
   }
 
+  function downloadOutput() {
+    const c = outRef.current;
+    if (!c) return;
+    const a = document.createElement("a");
+    a.href = c.toDataURL("image/png");
+    a.download = `${kernel.name.toLowerCase().replace(/\s+/g, "-")}-output.png`;
+    a.click();
+  }
+
+
+
   function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
