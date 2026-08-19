@@ -1,24 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ConvolutionLab } from "@/components/ConvolutionLab";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
   component: Index,
+  head: () => ({
+    meta: [
+      { title: "Convolution Kernel Explorer — Interactive Image Filters" },
+      {
+        name: "description",
+        content:
+          "Interactive 3×3 convolution playground: pick spatial or gradient kernels, hover the image and watch each multiply-accumulate step in real time.",
+      },
+      { property: "og:title", content: "Convolution Kernel Explorer" },
+      {
+        property: "og:description",
+        content:
+          "Explore blur, sharpen, Laplacian, Sobel and Prewitt kernels with a live 3×3 calculation view.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="min-h-screen bg-background text-foreground">
+      <ConvolutionLab />
+    </main>
   );
 }
