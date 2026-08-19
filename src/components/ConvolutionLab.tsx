@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CATEGORIES,
+  SAMPLES,
   convolve,
   defaultScene,
   neighbourhood,
   type CategoryName,
   type Gray,
   type Kernel,
+  type SampleName,
 } from "@/lib/kernels";
+
 
 const SCALE = 4;
 
@@ -103,7 +106,7 @@ export function ConvolutionLab() {
   const [category, setCategory] = useState<CategoryName>("Spatial Domain Methods");
   const [kernelName, setKernelName] = useState("Identity");
   const [source, setSource] = useState<Gray>(() => defaultScene());
-  const [sourceLabel, setSourceLabel] = useState("Default scene");
+  const [sourceLabel, setSourceLabel] = useState<string>("Studio subject");
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   const kernels = CATEGORIES[category];
@@ -143,6 +146,17 @@ export function ConvolutionLab() {
     const y = Math.floor(((e.clientY - rect.top) / rect.height) * source.height);
     setCursor({ x, y });
   }
+
+  function downloadOutput() {
+    const c = outRef.current;
+    if (!c) return;
+    const a = document.createElement("a");
+    a.href = c.toDataURL("image/png");
+    a.download = `${kernel.name.toLowerCase().replace(/\s+/g, "-")}-output.png`;
+    a.click();
+  }
+
+
 
   function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -278,32 +292,108 @@ export function ConvolutionLab() {
         </div>
       </Panel>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Panel title="Input image" eyebrow="02">
-          <canvas
-            ref={inRef}
-            onMouseMove={handleMove}
-            onMouseLeave={() => setCursor(null)}
-            style={{ imageRendering: "pixelated", aspectRatio: `${source.width}/${source.height}` }}
-            className="w-full cursor-crosshair rounded-md border border-border"
-          />
-          <p className="mt-3 font-mono text-xs text-muted-foreground">
-            cursor → column {probe.x}, row {probe.y}
-            {cursor ? "" : "  (idle: showing image centre)"}
-          </p>
-        </Panel>
+      <section className="rounded-xl border border-border bg-card shadow-sm">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+          <div className="flex items-baseline gap-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              02
+            </span>
+            <h2 className="text-sm font-semibold tracking-tight">
+              Input → Output comparison
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-md border border-border p-0.5">
+              {(Object.keys(SAMPLES) as SampleName[]).map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => {
+                    setSource(SAMPLES[name]());
+                    setSourceLabel(name);
+                    setCursor(null);
+                  }}
+                  className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                    sourceLabel === name
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={downloadOutput}
+              className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              Download output
+            </button>
+          </div>
+        </header>
 
-        <Panel title={`Output image — ${kernel.name}`} eyebrow="03">
-          <canvas
-            ref={outRef}
-            style={{ imageRendering: "pixelated", aspectRatio: `${source.width}/${source.height}` }}
-            className="w-full rounded-md border border-border"
-          />
-          <p className="mt-3 font-mono text-xs text-muted-foreground">
-            {signed ? "|response| clamped to [0, 255]" : "response clamped to [0, 255]"}
-          </p>
-        </Panel>
-      </div>
+        <div className="grid gap-px bg-border md:grid-cols-2">
+          <figure className="bg-card p-5">
+            <figcaption className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Input
+              </span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {sourceLabel} · {source.width}×{source.height}
+              </span>
+            </figcaption>
+            <div className="relative overflow-hidden rounded-lg border border-border bg-muted/30">
+              <canvas
+                ref={inRef}
+                onMouseMove={handleMove}
+                onMouseLeave={() => setCursor(null)}
+                style={{
+                  imageRendering: "pixelated",
+                  aspectRatio: `${source.width}/${source.height}`,
+                }}
+                className="block w-full cursor-crosshair"
+              />
+              <div
+                className="pointer-events-none absolute rounded-[2px] border-2 border-primary shadow-[0_0_0_9999px_color-mix(in_oklab,var(--background)_35%,transparent)]"
+                style={{
+                  left: `${((probe.x - 1) / source.width) * 100}%`,
+                  top: `${((probe.y - 1) / source.height) * 100}%`,
+                  width: `${(3 / source.width) * 100}%`,
+                  height: `${(3 / source.height) * 100}%`,
+                }}
+              />
+            </div>
+            <p className="mt-3 font-mono text-xs text-muted-foreground">
+              cursor → column {probe.x}, row {probe.y}
+              {cursor ? "" : "  (idle: image centre)"}
+            </p>
+          </figure>
+
+          <figure className="bg-card p-5">
+            <figcaption className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Output
+              </span>
+              <span className="font-mono text-[11px] text-primary">{kernel.name}</span>
+            </figcaption>
+            <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
+              <canvas
+                ref={outRef}
+                style={{
+                  imageRendering: "pixelated",
+                  aspectRatio: `${source.width}/${source.height}`,
+                }}
+                className="block w-full"
+              />
+            </div>
+            <p className="mt-3 font-mono text-xs text-muted-foreground">
+              {signed ? "|response| clamped to [0, 255]" : "response clamped to [0, 255]"}
+            </p>
+          </figure>
+        </div>
+      </section>
+
 
       <Panel title="Live kernel calculation" eyebrow="04">
         <div className="grid gap-6 md:grid-cols-[1fr_1fr_1fr]">

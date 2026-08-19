@@ -168,36 +168,77 @@ export function neighbourhood(src: Gray, x: number, y: number): number[][] {
   return rows;
 }
 
-/** Procedurally generated demo scene (grayscale house + tree + sun). */
-export function defaultScene(w = 160, h = 120): Gray {
+function makeGray(w: number, h: number, fn: (x: number, y: number) => number): Gray {
   const d = new Float32Array(w * h);
-  const set = (x: number, y: number, v: number) => {
-    if (x >= 0 && y >= 0 && x < w && y < h) d[y * w + x] = v;
-  };
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++) set(x, y, y > h * 0.62 ? 150 : 205);
-  // hills
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++)
-      if (Math.abs(x - 52) + Math.abs(y - h * 0.62) < 42 && y < h * 0.62) set(x, y, 120);
-  // sun
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++)
-      if ((x - 122) ** 2 + (y - 28) ** 2 < 20 ** 2) set(x, y, 250);
-  // house body
-  for (let y = 52; y < 96; y++) for (let x = 54; x < 106; x++) set(x, y, 78);
-  // roof
-  for (let y = 26; y < 53; y++)
-    for (let x = 44; x < 116; x++)
-      if (Math.abs(x - 80) < (y - 26) * 1.35) set(x, y, 48);
-  // windows + door
-  for (let y = 62; y < 76; y++) for (let x = 62; x < 74; x++) set(x, y, 200);
-  for (let y = 62; y < 76; y++) for (let x = 88; x < 100; x++) set(x, y, 200);
-  for (let y = 70; y < 96; y++) for (let x = 76; x < 88; x++) set(x, y, 215);
-  // tree
-  for (let y = 60; y < 96; y++) for (let x = 22; x < 30; x++) set(x, y, 68);
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++)
-      if ((x - 26) ** 2 / 1.2 + (y - 48) ** 2 < 20 ** 2) set(x, y, 55);
+      d[y * w + x] = Math.min(255, Math.max(0, fn(x, y)));
   return { data: d, width: w, height: h };
 }
+
+/** Soft photographic-style subject: sphere with shading, gradient sky, ground texture. */
+export function sampleStudio(w = 176, h = 132): Gray {
+  return makeGray(w, h, (x, y) => {
+    const horizon = h * 0.68;
+    let v = y < horizon ? 210 - (y / horizon) * 55 : 128 + Math.sin(x * 0.35 + y * 0.6) * 6;
+    if (y >= horizon) v -= (y - horizon) * 0.5;
+    // sphere
+    const cx = w * 0.58, cy = horizon - 26, r = 30;
+    const dx = (x - cx) / r, dy = (y - cy) / r;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < 1) {
+      const nz = Math.sqrt(1 - d2);
+      const light = 0.55 * -dx + 0.5 * -dy + 0.75 * nz;
+      v = 40 + 205 * Math.max(0, light) ** 1.4;
+    }
+    // soft shadow
+    const sx = (x - cx - 8) / 40, sy = (y - horizon - 5) / 8;
+    if (sx * sx + sy * sy < 1) v *= 0.72;
+    // small cube
+    if (x > 24 && x < 62 && y > horizon - 30 && y < horizon) v = x < 44 ? 92 : 140;
+    return v;
+  });
+}
+
+/** Resolution test chart: bars, checkers, step wedge, circle. */
+export function sampleTestChart(w = 176, h = 132): Gray {
+  return makeGray(w, h, (x, y) => {
+    if (y < h * 0.3) return Math.floor(x / 6) % 2 === 0 ? 235 : 30;
+    if (y < h * 0.55)
+      return (Math.floor(x / 8) + Math.floor((y - h * 0.3) / 8)) % 2 === 0 ? 220 : 45;
+    if (y < h * 0.78) return 15 + Math.floor((x / w) * 8) * 32;
+    const dx = x - w * 0.5, dy = y - h * 0.9;
+    return dx * dx + dy * dy < 22 * 22 ? 240 : 70;
+  });
+}
+
+/** Fine-grain noisy texture: good for smoothing/median demos. */
+export function sampleTexture(w = 176, h = 132): Gray {
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const noise = Array.from({ length: w * h }, () => rnd());
+  return makeGray(w, h, (x, y) => {
+    const base =
+      140 +
+      45 * Math.sin(x * 0.09) * Math.cos(y * 0.11) +
+      25 * Math.sin((x + y) * 0.21);
+    const salt = noise[y * w + x]!;
+    if (salt > 0.985) return 255;
+    if (salt < 0.015) return 0;
+    return base + (salt - 0.5) * 40;
+  });
+}
+
+export const SAMPLES = {
+  "Studio subject": sampleStudio,
+  "Resolution chart": sampleTestChart,
+  "Noisy texture": sampleTexture,
+} as const;
+
+export type SampleName = keyof typeof SAMPLES;
+
+/** Default demo image. */
+export function defaultScene(): Gray {
+  return sampleStudio();
+}
+
