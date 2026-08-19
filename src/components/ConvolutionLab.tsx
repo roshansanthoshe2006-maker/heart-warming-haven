@@ -106,7 +106,7 @@ export function ConvolutionLab() {
   const [category, setCategory] = useState<CategoryName>("Spatial Domain Methods");
   const [kernelName, setKernelName] = useState("Identity");
   const [source, setSource] = useState<Gray>(() => defaultScene());
-  const [sourceLabel, setSourceLabel] = useState("Default scene");
+  const [sourceLabel, setSourceLabel] = useState<string>("Studio subject");
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   const kernels = CATEGORIES[category];
