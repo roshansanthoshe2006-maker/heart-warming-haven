@@ -139,6 +139,10 @@
 
   body {
     background-color: var(--color-background);
+    background-image:
+      radial-gradient(circle at 20% 0%, oklch(0.22 0.12 250 / 0.35), transparent 45%),
+      radial-gradient(circle at 80% 100%, oklch(0.18 0.1 240 / 0.3), transparent 45%);
+    background-attachment: fixed;
     color: var(--color-foreground);
   }
 }
